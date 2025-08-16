@@ -1,49 +1,48 @@
 from openai import OpenAI
+import os
 
 # Define the API key and base URL for the proxy
-#API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZHMyMDAwMTE2QGRzLnN0dWR5LmlpdG0uYWMuaW4ifQ.zMwXMjQzRY5qReAa3jvzKD9lyPw0MZm2dbm-5tSfuW0"
+# Fetch API key from environment
 API_KEY = os.getenv("OPENAI_API_KEY")
-BASE_URL = "https://aiproxy.sanand.workers.dev/openai/v1"
+BASE_URL = "https://aipipe.org/openai/v1"
+
+if not API_KEY:
+    print("API key not found")
 
 # Initialize the OpenAI client
 client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
 
-def generate_analysis_code(task_text: str, schema: dict, code1: str) -> str:
-    prompt = f"""
-You are a data analyst. Given the following schema:
-{schema}
-and following code that used logic to fetch data:
-{code1}
-And the user request:
-\"\"\"{task_text}\"\"\"
-
-Generate Python code that:
-1. Loads the data using the same logic as before.
-2. For fetching URL bypass SSL validation
-3. Performs the analysis as per the user request.
-4. Appropriately convert column types to numeric for any requested statistical or numerical analysis. For example, convert columns to numeric where possible.
-5. If any numeric column have value such as combinition of numeric and non-numeric strings then replace non-numeric elements of value with blank but don't make entire value as blank
-6. Also don't drop any rows unless specifically asked
-7. Handles common data quality issues such as:
-   - Non-numeric values in numeric columns
-   - Missing or malformed entries
-   - Inconsistent formatting (e.g., currency symbols, commas)
-   - Unexpected data types
-8. Cleans and validates the data before performing any operations like type conversion or filtering.
-   For example, remove symbols like '$' and ',' from numeric columns and filter out non-numeric entries using regex before converting to float or int.
-9. Returns the result in a variable called analysis_result.
-10. Do not include any explanation or comments in the code.
+def generate_analysis_code(task_text: str) -> str:
+    prompt = f"""You are a data analyst. 
+        You are given a pandas DataFrame named `df`. 
+        Write Python code to perform analytical tasks as per User request:
+        {task_text}
+        
+        Strict Rules to follow:
+        The only use provided dataframe df Do NOT reload or fetch data again in this code.
+        If any numeric column keep the value in absolute units
+        Do NOT drop rows unless explicitly asked.
+        Use only the column names provided in the given dataframe Do not invent or infer any other column names.:
+           - For numeric columns (int64, float64), clean values by:
+             * Removing any non-numeric characters except '.' and digits
+             * Remove currency symbols, commas, spaces, and footnotes; keep digits and '.'
+           - For object columns that contain mixed numeric and text (e.g., '$2,923,706,026'), just keep the full numeric value and remove characters or symbols
+        - If the user asks for a chart or visualization:
+            * Generate the plot using matplotlib impot any required lib like matplotlib.pyplot as plt, io, base64
+            * Save the figure to an in-memory buffer (BytesIO) as PNG with size <100KB.
+            * Encode the image in Base64 and without prefix "data:image/png;base64,".
+        Return a Python dictionary with variable name as analysis_result, with the keys based on analytical task to be performed). Do not return a list or tuple. Only return a dict with the required keys.
+        Output only Python code, no explanations or comments.
 """
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-nano",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
+            temperature=0.2
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
         print(f"LLM API error: {e}")
         return "Error: LLM failed to generate code"
-
 
