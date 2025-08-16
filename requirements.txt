@@ -1,4 +1,14 @@
 fastapi
+matplotlib
+pillow
+seaborn
 uvicorn
 pandas
 matplotlib
+requests
+pillow
+openai
+python-multipart
+beautifulsoup4
+lxml
+networkx
