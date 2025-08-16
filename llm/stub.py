@@ -1,36 +1,38 @@
 import os
-import glob
 import re
 import requests
 from openai import OpenAI
 
+# Fetch API key from environment
 
-#API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZHMyMDAwMTE2QGRzLnN0dWR5LmlpdG0uYWMuaW4ifQ.zMwXMjQzRY5qReAa3jvzKD9lyPw0MZm2dbm-5tSfuW0"
 API_KEY = os.getenv("OPENAI_API_KEY")
-# Initialize the client
+if not API_KEY:
+    raise ValueError("API key not found. Please set OPENAI_API_KEY environment variable.")
 
+# Initialize OpenAI client
 client = OpenAI(
     api_key=API_KEY,
-    base_url="https://aiproxy.sanand.workers.dev/openai/v1"
+    base_url="https://aipipe.org/openai/v1"
 )
 
 def generate_code_for_data(task_text: str):
 
     prompt = (
-        "You are a Python data analyst. Based on the following task description, parse the information & seperate source info and analytical actions to be performed \n"
-        "Now Next step is to generate a python code that should understand what type of source is given like given url or csv file or json file. It's its URL then disable SSL validation for safe side\n"
-        "code should also be able to read data and generate dataframe out of it"
-        "based on that dataframe, identify column names and their types \n"
-        "give me only python code which can use source info and generate dataframe. No analytical processing or No other extra information \n"
-        "At the end of your code, assign the column names and their types as a dictionary to a variable named result \n"
-        f"{task_text}\n\n"
-        "Python Code:"
-    )
+        "You are a Python data analyst. Based on the following task description, "
+        "parse the information & identify source info\n"
+        "Generate Python code that:\n"
+        "- Detects if the source is a URL, CSV, or JSON. If URL, load securely (default TLS verification).\n"
+        "- Reads the data into a pandas DataFrame named df.\n"
+        "- No Analytical action is needed strictly at this point df.\n"
+        "- Code should produce 1 output with variable names as df df should have read dataframe\n"
+        "Output only Python code, no explanations."
+        f"\nTask:\n{task_text}\n\nPython Code:"
+)
 
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-nano",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1
         )
